@@ -165,25 +165,31 @@ abstract class WP_Background_Process extends WP_Async_Request {
 	 * the process is not already running.
 	 */
 	public function maybe_handle() {
-		// Don't lock up other requests while processing
-		session_write_close();
+            // Don't lock up other requests while processing
+            session_write_close();
 
-		if ( $this->is_process_running() ) {
-			// Background process already running.
-			wp_die();
-		}
+            // Validate request context
+            if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+                wp_die( __( 'Invalid request context.', 'elementor' ), '', array( 'response' => 400 ) );
+            }
 
-		if ( $this->is_queue_empty() ) {
-			// No data to process.
-			wp_die();
-		}
+            if ( $this->is_process_running() ) {
+                // Background process already running.
+                wp_die( __( 'Background process already running.', 'elementor' ), '', array( 'response' => 429 ) );
+            }
 
-		check_ajax_referer( $this->identifier, 'nonce' );
+            if ( $this->is_queue_empty() ) {
+                // No data to process.
+                wp_die( __( 'No data to process.', 'elementor' ), '', array( 'response' => 204 ) );
+            }
 
-		$this->handle();
+            check_ajax_referer( $this->identifier, 'nonce' );
 
-		wp_die();
-	}
+            $this->handle();
+
+            // Indicate successful handling of request
+            wp_die( __( 'Process handled successfully.', 'elementor' ), '', array( 'response' => 200 ) );
+        }
 
 	/**
 	 * Is queue empty
